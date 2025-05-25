@@ -5,6 +5,7 @@ const port = process.env.PORT || 6700;
 const fs = require('fs');
 const path = require('path');
 
+
 const dbPath = path.join(__dirname, 'db.json');
 
 app.use(cors());
@@ -20,7 +21,7 @@ function readDB(callback) {
 }
 
 // latest movies
-app.get('/api/latest', (req, res) => {
+app.get('/latest', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     res.json(db.latest);
@@ -28,7 +29,7 @@ app.get('/api/latest', (req, res) => {
 });
 
 // upcoming movies
-app.get('/api/upcomingMovies', (req, res) => {
+app.get('/upcomingMovies', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     res.json(db.upcomingMovies);
@@ -36,7 +37,7 @@ app.get('/api/upcomingMovies', (req, res) => {
 });
 
 // one upcoming movie by ID
-app.get('/api/upcoming/:id', (req, res) => {
+app.get('/upcoming/:id', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     const movie = db.upcomingMovies.find(m => m.id === req.params.id);
@@ -46,7 +47,7 @@ app.get('/api/upcoming/:id', (req, res) => {
 });
 
 // all events
-app.get('/api/events', (req, res) => {
+app.get('/events', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     res.json(db.events);
@@ -54,7 +55,7 @@ app.get('/api/events', (req, res) => {
 });
 
 // one event by ID
-app.get('/api/events/:id', (req, res) => {
+app.get('/events/:id', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     const event = db.events.find(e => e.id === req.params.id);
@@ -64,7 +65,7 @@ app.get('/api/events/:id', (req, res) => {
 });
 
 // all users
-app.get('/api/users', (req, res) => {
+app.get('/users', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     res.json(db.users);
@@ -72,7 +73,7 @@ app.get('/api/users', (req, res) => {
 });
 
 // one user by ID
-app.get('/api/users/:id', (req, res) => {
+app.get('/users/:id', (req, res) => {
   readDB((err, db) => {
     if (err) return res.status(500).json({ error: "Server error" });
     const user = db.users.find(u => u.id === req.params.id);
@@ -82,7 +83,7 @@ app.get('/api/users/:id', (req, res) => {
 });
 
 // add new user
-app.post('/api/users', (req, res) => {
+app.post('/users', (req, res) => {
   const newUser = req.body;
   newUser.id = Math.random().toString(36).substr(2, 4);
 
@@ -94,6 +95,59 @@ app.post('/api/users', (req, res) => {
     fs.writeFile(dbPath, JSON.stringify(db, null, 2), err => {
       if (err) return res.status(500).json({ error: "Failed to write data" });
       res.status(201).json({ message: "User added successfully", user: newUser });
+    });
+  });
+});
+//getting booking
+app.get('/bookings', (req, res) => {
+  const { user } = req.query;
+
+  readDB((err, db) => {
+    if (err) return res.status(500).json({ error: "Server error" });
+
+    if (!user) {
+      return res.json(db.bookings); // if no user filter, return all
+    }
+
+    const userBookings = db.bookings.filter(b => b.user === user);
+    res.json(userBookings);
+  });
+});
+// post bookng
+app.post('/bookings', (req, res) => {
+  const newBooking = req.body;
+  newBooking.id = Math.random().toString(36).substr(2, 4); // simple id
+
+  readDB((err, db) => {
+    if (err) return res.status(500).json({ error: "Server error" });
+
+    db.bookings.push(newBooking);
+
+    fs.writeFile(dbPath, JSON.stringify(db, null, 2), err => {
+      if (err) return res.status(500).json({ error: "Failed to save booking" });
+      res.status(201).json({ message: "Booking saved", booking: newBooking });
+    });
+  });
+});
+
+// deleted bookings
+app.delete('/bookings/:id', (req, res) => {
+  const bookingId = req.params.id;
+
+  readDB((err, db) => {
+    if (err) return res.status(500).json({ error: "Server error" });
+
+    const newBookings = db.bookings.filter(b => b.id !== bookingId);
+
+    if (newBookings.length === db.bookings.length) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    db.bookings = newBookings;
+
+    fs.writeFile(dbPath, JSON.stringify(db, null, 2), err => {
+      if (err) return res.status(500).json({ error: "Failed to delete booking" });
+      res.json({ message: "Booking deleted" });
     });
   });
 });
